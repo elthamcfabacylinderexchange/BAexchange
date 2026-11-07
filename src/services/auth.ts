@@ -2,6 +2,8 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getAuth,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
   User,
@@ -11,6 +13,7 @@ import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
+export const firebaseProjectId = firebaseConfig.projectId || 'gen-lang-client-0506594677';
 
 export const SCOPES = ['https://www.googleapis.com/auth/gmail.send'];
 
@@ -37,6 +40,23 @@ export const initAuth = (
   });
 };
 
+export const checkRedirectAuth = async (): Promise<{ user: User; accessToken: string } | null> => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) {
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        cachedAccessToken = credential.accessToken;
+        return { user: result.user, accessToken: credential.accessToken };
+      }
+    }
+  } catch (error: any) {
+    console.error('Redirect result error:', error);
+    throw error;
+  }
+  return null;
+};
+
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
   try {
     isSigningIn = true;
@@ -56,6 +76,15 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
   }
 };
 
+export const googleSignInRedirect = async (): Promise<void> => {
+  isSigningIn = true;
+  try {
+    await signInWithRedirect(auth, provider);
+  } finally {
+    isSigningIn = false;
+  }
+};
+
 export const getAccessToken = async (): Promise<string | null> => {
   return cachedAccessToken;
 };
@@ -68,3 +97,4 @@ export const logout = async () => {
   await signOut(auth);
   cachedAccessToken = null;
 };
+

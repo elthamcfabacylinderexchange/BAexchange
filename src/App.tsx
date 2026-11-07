@@ -7,8 +7,16 @@ import { FinishSection } from './components/FinishSection';
 import { CompletionScreen } from './components/CompletionScreen';
 import { SettingsModal } from './components/SettingsModal';
 import { EmailReceiptModal } from './components/EmailReceiptModal';
+import { AuthErrorModal } from './components/AuthErrorModal';
 import { AppSettings, CylinderExchangeRecord } from './types';
-import { initAuth, googleSignIn, logout, setCachedAccessToken } from './services/auth';
+import {
+  initAuth,
+  googleSignIn,
+  googleSignInRedirect,
+  checkRedirectAuth,
+  logout,
+  setCachedAccessToken,
+} from './services/auth';
 import { setupAutoFullscreen } from './utils/fullscreen';
 import {
   getKioskSettings,
@@ -25,6 +33,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<{ code?: string; message?: string } | null>(null);
 
   // Settings
   const [settings, setSettings] = useState<AppSettings>({
@@ -72,17 +81,57 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Check for redirect result on mount (if user returned from full page redirect)
+  useEffect(() => {
+    checkRedirectAuth()
+      .then((res) => {
+        if (res) {
+          setUser(res.user);
+          setAccessToken(res.accessToken);
+          setAuthError(null);
+        }
+      })
+      .catch((err: any) => {
+        console.error('Redirect sign-in error:', err);
+        setAuthError({
+          code: err?.code || 'auth/redirect-failed',
+          message: err?.message || 'Authentication failed after redirect',
+        });
+      });
+  }, []);
+
   const handleGoogleSignIn = async () => {
     setIsLoggingIn(true);
+    setAuthError(null);
     try {
       const res = await googleSignIn();
       if (res) {
         setUser(res.user);
         setAccessToken(res.accessToken);
+        setAuthError(null);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Google Sign-In failed:', err);
+      setAuthError({
+        code: err?.code || 'auth/error',
+        message: err?.message || 'Google Sign-In failed to complete',
+      });
     } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleGoogleSignInRedirect = async () => {
+    setIsLoggingIn(true);
+    setAuthError(null);
+    try {
+      await googleSignInRedirect();
+    } catch (err: any) {
+      console.error('Google Redirect failed:', err);
+      setAuthError({
+        code: err?.code || 'auth/error',
+        message: err?.message || 'Failed to start redirect flow',
+      });
       setIsLoggingIn(false);
     }
   };
@@ -92,6 +141,7 @@ export default function App() {
       await logout();
       setUser(null);
       setAccessToken(null);
+      setAuthError(null);
     } catch (err) {
       console.error('Sign-out error:', err);
     }
@@ -145,11 +195,19 @@ export default function App() {
     try {
       let currentToken = accessToken;
       if (!currentToken) {
-        const signinRes = await googleSignIn();
-        if (signinRes) {
-          setUser(signinRes.user);
-          setAccessToken(signinRes.accessToken);
-          currentToken = signinRes.accessToken;
+        try {
+          const signinRes = await googleSignIn();
+          if (signinRes) {
+            setUser(signinRes.user);
+            setAccessToken(signinRes.accessToken);
+            currentToken = signinRes.accessToken;
+          }
+        } catch (authErr: any) {
+          setAuthError({
+            code: authErr?.code || 'auth/error',
+            message: authErr?.message || 'Google Sign-In failed to authenticate',
+          });
+          return false;
         }
       }
 
@@ -242,6 +300,22 @@ export default function App() {
       <EmailReceiptModal
         receiptId={previewReceiptId}
         onClose={() => setPreviewReceiptId(null)}
+      />
+
+      {/* Google Auth & Domain Error Modal */}
+      <AuthErrorModal
+        isOpen={Boolean(authError)}
+        error={authError}
+        onClose={() => setAuthError(null)}
+        onRetry={() => {
+          setAuthError(null);
+          handleGoogleSignIn();
+        }}
+        onTryRedirect={() => {
+          setAuthError(null);
+          handleGoogleSignInRedirect();
+        }}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
     </div>
   );
