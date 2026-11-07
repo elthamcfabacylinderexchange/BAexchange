@@ -1,0 +1,13 @@
+{
+  "recipientEmail": "elthamcfabacylinderexchange@gmail.com",
+  "senderEmail": "elthamcfabacylinderexchange@gmail.com",
+  "depotStationName": "Eltham Fire Brigade BA Maintenance Cache",
+  "soundEnabled": true,
+  "autoResetSeconds": 10,
+  "requireMemberDetails": false,
+  "smtpHost": "smtp.gmail.com",
+  "smtpPort": 465,
+  "smtpSecure": true,
+  "smtpUser": "elthamcfabacylinderexchange@gmail.com",
+  "smtpPass": ""
+}

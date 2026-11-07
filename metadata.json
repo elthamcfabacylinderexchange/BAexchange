@@ -1,0 +1,8 @@
+{
+  "name": "Remix Eltham CFA BA Cylinder Exchange",
+  "description": "Tablet check-in and check-out kiosk for CFA Fire Brigades to log breathing apparatus cylinders and automatically notify brigade members.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Name=Eltham CFA BA Kiosk
+Comment=CFA Breathing Apparatus Cylinder Check-in and Check-out Kiosk
+Exec=chromium-browser --kiosk "https://ais-pre-dwh3ledecmua72tenlscrq-508027481207.us-east1.run.app"
+Icon=/app/applet/public/pwa-512x512.png
+Terminal=false
+Type=Application
+Categories=Utility;Kiosk;
