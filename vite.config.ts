@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
   return {
+    base: './',
     plugins: [
       react(),
       tailwindcss(),
@@ -13,7 +14,7 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['apple-touch-icon.png', 'icon.svg'],
         manifest: {
-          id: '/',
+          id: './',
           name: 'Eltham CFA BA Cylinder Exchange',
           short_name: 'CFA BA Kiosk',
           description: 'Tablet check-in and check-out kiosk for CFA Fire Brigades to log breathing apparatus cylinders.',
@@ -21,24 +22,24 @@ export default defineConfig(() => {
           background_color: '#0f172a',
           display: 'standalone',
           display_override: ['fullscreen', 'standalone', 'minimal-ui'],
-          start_url: '/',
-          scope: '/',
+          start_url: './',
+          scope: './',
           orientation: 'any',
           icons: [
             {
-              src: '/pwa-192x192.png',
+              src: 'pwa-192x192.png',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-512x512.png',
+              src: 'pwa-512x512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-maskable-512x512.png',
+              src: 'pwa-maskable-512x512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { X, Mail, Volume2, Clock, Building, Check, Send, AlertCircle, ChevronDown, ChevronUp, Lock } from 'lucide-react';
-import { AppSettings } from '../types';
+import { AppSettings, CylinderExchangeRecord } from '../types';
 import { sound } from '../utils/sound';
 import elthamLogo from '../assets/images/elthamlogo18.png';
+import { sendEmailViaGmailApiDirect } from '../services/kioskClient';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -90,22 +91,66 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         headers['Authorization'] = `Bearer ${accessToken}`;
       }
 
-      const res = await fetch('/api/send-test-email', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          email: recipientEmail.trim(),
-          smtpPass: cleanPass || undefined,
-          accessToken: accessToken || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      let succeeded = false;
+      let detailMsg = '';
+
+      try {
+        const res = await fetch('/api/send-test-email', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            email: recipientEmail.trim(),
+            smtpPass: cleanPass || undefined,
+            accessToken: accessToken || undefined,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success) {
+            succeeded = true;
+            detailMsg = `Success! Live email delivered to ${recipientEmail}. Check your inbox!`;
+          } else {
+            detailMsg = data.error || data.result?.detail || 'Failed to dispatch test email.';
+          }
+        }
+      } catch {
+        // Server unreachable or 404 (e.g. GitHub Pages static host)
+      }
+
+      // If server route wasn't available (GitHub Pages) and we have accessToken, send directly!
+      if (!succeeded && accessToken) {
+        const dummyRecord: CylinderExchangeRecord = {
+          id: `CFA-TEST-${Date.now().toString().slice(-4)}`,
+          timestamp: new Date().toISOString(),
+          brigadeName: 'Eltham Fire Brigade (Diagnostic Test)',
+          droppedOffCount: 2,
+          collectedCount: 2,
+          cylinderType: 'Standard 300 BAR Composite',
+          recipientEmail: recipientEmail.trim(),
+          emailStatus: 'sent',
+          emailDeliveryDetail: '',
+        };
+
+        const directResult = await sendEmailViaGmailApiDirect(
+          dummyRecord,
+          depotStationName,
+          recipientEmail.trim(),
+          accessToken
+        );
+
+        if (directResult.success) {
+          succeeded = true;
+          detailMsg = `Success! Live email delivered to ${recipientEmail} directly via Gmail API. Check your inbox!`;
+        } else {
+          detailMsg = directResult.detail;
+        }
+      }
+
+      if (succeeded) {
         setTestResult({
           success: true,
-          message: `Success! Live email delivered to ${recipientEmail}. Check your inbox!`,
+          message: detailMsg || `Success! Live email delivered to ${recipientEmail}. Check your inbox!`,
         });
-        // Automatically save working settings to kiosk
         onSave({
           ...settings,
           recipientEmail: recipientEmail.trim(),
@@ -113,12 +158,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           depotStationName: depotStationName.trim(),
           soundEnabled,
           autoResetSeconds: Number(autoResetSeconds) || 10,
-          smtpPass: cleanPass,
+          smtpPass: cleanPass || settings.smtpPass || '',
         });
       } else {
         setTestResult({
           success: false,
-          message: data.error || data.result?.detail || 'Failed to dispatch test email. Please check your App Password.',
+          message: detailMsg || 'Failed to dispatch test email. Please check your connection or Gmail login.',
         });
       }
     } catch (err: any) {

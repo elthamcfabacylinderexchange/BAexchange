@@ -10,6 +10,12 @@ import { EmailReceiptModal } from './components/EmailReceiptModal';
 import { AppSettings, CylinderExchangeRecord } from './types';
 import { initAuth, googleSignIn, logout, setCachedAccessToken } from './services/auth';
 import { setupAutoFullscreen } from './utils/fullscreen';
+import {
+  getKioskSettings,
+  saveKioskSettings,
+  submitKioskExchange,
+  resendKioskEmail,
+} from './services/kioskClient';
 
 export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -91,22 +97,11 @@ export default function App() {
     }
   };
 
-  // Fetch settings from server on mount
+  // Fetch settings on mount (server or localStorage fallback)
   useEffect(() => {
-    fetch('/api/settings')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          setSettings((prev) => ({
-            ...prev,
-            ...data,
-            recipientEmail: data.recipientEmail || 'elthamcfabacylinderexchange@gmail.com',
-            senderEmail: data.senderEmail || 'elthamcfabacylinderexchange@gmail.com',
-            smtpPass: data.smtpPass || '',
-          }));
-        }
-      })
-      .catch(() => {});
+    getKioskSettings().then((data) => {
+      if (data) setSettings(data);
+    });
   }, []);
 
   // Reset to initial clean state with no default brigade
@@ -125,59 +120,28 @@ export default function App() {
 
     setIsSubmitting(true);
     try {
-      const payload = {
-        brigadeName: selectedBrigade,
-        brigadeDistrict: selectedDistrict,
-        droppedOffCount,
-        collectedCount,
-        cylinderType: 'Standard 300 BAR Composite',
-        recipientEmail: settings.recipientEmail || 'elthamcfabacylinderexchange@gmail.com',
-        accessToken: accessToken || undefined,
-      };
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-
-      const res = await fetch('/api/exchange', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to save exchange');
-      }
-
-      const data = await res.json();
-      if (data && data.record) {
-        setLatestRecord(data.record);
-      }
+      const record = await submitKioskExchange(
+        {
+          brigadeName: selectedBrigade,
+          brigadeDistrict: selectedDistrict,
+          droppedOffCount,
+          collectedCount,
+          cylinderType: 'Standard 300 BAR Composite',
+          recipientEmail: settings.recipientEmail || 'elthamcfabacylinderexchange@gmail.com',
+          accessToken: accessToken || undefined,
+        },
+        settings
+      );
+      setLatestRecord(record);
     } catch (err: any) {
       console.error('Submission error:', err);
-      // Fallback local record with accurate status
-      const offlineRecord: CylinderExchangeRecord = {
-        id: `CFA-BA-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`,
-        timestamp: new Date().toISOString(),
-        brigadeName: selectedBrigade,
-        brigadeDistrict: selectedDistrict,
-        droppedOffCount,
-        collectedCount,
-        cylinderType: 'Standard 300 BAR Composite',
-        recipientEmail: settings.recipientEmail || 'elthamcfabacylinderexchange@gmail.com',
-        emailStatus: 'failed',
-        emailDeliveryDetail: `Kiosk saved record locally, but network dispatch failed: ${err.message || 'Server unreachable'}.`,
-      };
-      setLatestRecord(offlineRecord);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleResendEmail = async (receiptId: string): Promise<boolean> => {
+    if (!latestRecord) return false;
     try {
       let currentToken = accessToken;
       if (!currentToken) {
@@ -189,25 +153,9 @@ export default function App() {
         }
       }
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (currentToken) {
-        headers['Authorization'] = `Bearer ${currentToken}`;
-      }
-
-      const res = await fetch(`/api/exchanges/${receiptId}/resend-email`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ accessToken: currentToken || undefined }),
-      });
-
-      const data = await res.json();
-      if (data.success && data.record) {
-        setLatestRecord(data.record);
-        return true;
-      }
-      return false;
+      const updated = await resendKioskEmail(latestRecord, settings, currentToken);
+      setLatestRecord(updated);
+      return updated.emailStatus === 'sent';
     } catch (err) {
       console.error('Failed to resend email:', err);
       return false;
@@ -216,11 +164,7 @@ export default function App() {
 
   const handleSaveSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
-    fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newSettings),
-    }).catch(() => {});
+    saveKioskSettings(newSettings);
   };
 
   return (
