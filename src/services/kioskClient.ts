@@ -127,6 +127,49 @@ export function generateClientEmailHtml(record: CylinderExchangeRecord, depotNam
 </html>`;
 }
 
+// Send email via permanent Google Apps Script Webhook (24/7 Zero-Timeout)
+export async function sendEmailViaWebhook(
+  record: CylinderExchangeRecord,
+  depotName: string,
+  targetEmail: string,
+  webhookUrl: string
+): Promise<{ success: boolean; detail: string }> {
+  try {
+    const htmlContent = generateClientEmailHtml(record, depotName);
+    const subject = `[CFA BA Kiosk] ${record.brigadeName} - Exchange Receipt (${record.droppedOffCount} In / ${record.collectedCount} Out)`;
+
+    const payload = {
+      to: targetEmail,
+      subject,
+      html: htmlContent,
+      recordId: record.id,
+      brigade: record.brigadeName,
+      dropped: record.droppedOffCount,
+      collected: record.collectedCount,
+    };
+
+    // Google Apps Script redirects with 302; mode: 'no-cors' allows browser dispatch without CORS blockage
+    await fetch(webhookUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      success: true,
+      detail: `Delivered directly to ${targetEmail} via 24/7 Zero-Timeout Kiosk Relay`,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      detail: `Relay error: ${err.message || 'Unable to dispatch to Google Script relay'}`,
+    };
+  }
+}
+
 // Send email directly to recipient via official Google Gmail API from browser
 export async function sendEmailViaGmailApiDirect(
   record: CylinderExchangeRecord,
@@ -170,6 +213,12 @@ export async function sendEmailViaGmailApiDirect(
       return {
         success: true,
         detail: `Delivered directly to ${targetEmail} via connected Gmail (ID: ${data.id})`,
+      };
+    } else if (response.status === 401) {
+      // Token expired due to inactivity
+      return {
+        success: false,
+        detail: 'Gmail connection timed out after 1 hour of inactivity. Please tap "Reconnect Gmail" in the top bar.',
       };
     } else {
       const err = await response.text();
@@ -282,8 +331,18 @@ export async function submitKioskExchange(
     // Server not available (e.g. GitHub Pages static host)
   }
 
-  // 2. Static host (GitHub Pages) client-side execution
-  if (payload.accessToken) {
+  // 2. Static host (GitHub Pages) or Client execution
+  if (settings.googleScriptWebhookUrl?.trim()) {
+    // 24/7 Zero-Timeout Kiosk Relay
+    const webhookResult = await sendEmailViaWebhook(
+      initialRecord,
+      settings.depotStationName,
+      targetRecipient,
+      settings.googleScriptWebhookUrl.trim()
+    );
+    initialRecord.emailStatus = webhookResult.success ? 'sent' : 'failed';
+    initialRecord.emailDeliveryDetail = webhookResult.detail;
+  } else if (payload.accessToken) {
     const emailResult = await sendEmailViaGmailApiDirect(
       initialRecord,
       settings.depotStationName,
@@ -294,14 +353,14 @@ export async function submitKioskExchange(
     initialRecord.emailDeliveryDetail = emailResult.detail;
   } else {
     initialRecord.emailStatus = 'failed';
-    initialRecord.emailDeliveryDetail = 'Not delivered: Please tap "Login to Gmail" in the top bar to connect your account.';
+    initialRecord.emailDeliveryDetail = 'Not delivered: Please tap "Login to Gmail" in the top bar or configure 24/7 Kiosk Relay in Settings.';
   }
 
   saveExchangeLocally(initialRecord);
   return initialRecord;
 }
 
-// 4. Resend Email (hybrid: server or direct client dispatch)
+// 4. Resend Email (hybrid: server, webhook relay, or direct client dispatch)
 export async function resendKioskEmail(
   record: CylinderExchangeRecord,
   settings: AppSettings,
@@ -327,7 +386,24 @@ export async function resendKioskEmail(
     }
   } catch {}
 
-  // 2. Direct client fallback for GitHub Pages
+  // 2. Webhook Relay fallback (24/7 Zero-Timeout)
+  if (settings.googleScriptWebhookUrl?.trim()) {
+    const res = await sendEmailViaWebhook(
+      record,
+      settings.depotStationName,
+      record.recipientEmail || settings.recipientEmail,
+      settings.googleScriptWebhookUrl.trim()
+    );
+    const updated = {
+      ...record,
+      emailStatus: res.success ? ('sent' as const) : ('failed' as const),
+      emailDeliveryDetail: res.detail,
+    };
+    saveExchangeLocally(updated);
+    return updated;
+  }
+
+  // 3. Direct client fallback for GitHub Pages via OAuth
   if (accessToken) {
     const res = await sendEmailViaGmailApiDirect(
       record,

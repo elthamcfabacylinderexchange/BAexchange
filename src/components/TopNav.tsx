@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Maximize2, Minimize2, RotateCcw, CheckCircle2, LogOut } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Maximize2, Minimize2, RotateCcw, CheckCircle2, LogOut, RefreshCw, Zap } from 'lucide-react';
 import { User } from 'firebase/auth';
 import elthamLogo from '../assets/images/elthamlogo18.png';
 import { GoogleSignInButton } from './GoogleSignInButton';
@@ -11,6 +11,8 @@ interface TopNavProps {
   depotName: string;
   user: User | null;
   accessToken: string | null;
+  tokenRemainingMinutes?: number;
+  is24HourRelayActive?: boolean;
   onGoogleSignIn: () => void;
   onGoogleSignOut: () => void;
   isLoggingIn: boolean;
@@ -21,6 +23,8 @@ export const TopNav: React.FC<TopNavProps> = ({
   onOpenSettings,
   user,
   accessToken,
+  tokenRemainingMinutes = 0,
+  is24HourRelayActive = false,
   onGoogleSignIn,
   onGoogleSignOut,
   isLoggingIn,
@@ -92,30 +96,82 @@ export const TopNav: React.FC<TopNavProps> = ({
 
         {/* Tablet Actions */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Gmail Login Button or Connected Badge */}
-          {user && accessToken ? (
-            <div className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-600/40 px-3 py-1.5 rounded-xl text-xs text-emerald-300">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          {/* 1. Permanent 24/7 Relay Badge (Zero-Timeout) */}
+          {is24HourRelayActive ? (
+            <div
+              onClick={onOpenSettings}
+              title="24/7 Kiosk Email Relay Active (Never times out). Click to open settings."
+              className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-600/40 px-3 py-1.5 rounded-xl text-xs text-emerald-300 cursor-pointer hover:bg-emerald-900/80 transition-colors"
+            >
+              <Zap className="w-4 h-4 text-emerald-400 shrink-0 fill-emerald-400/30" />
               <div className="leading-tight">
-                <span className="font-bold block text-white text-[11px]">Gmail Connected</span>
-                <span className="text-[10px] text-emerald-400 font-mono max-w-[140px] truncate block">
+                <span className="font-bold block text-white text-[11px]">24/7 Email Active</span>
+                <span className="text-[10px] text-emerald-400 font-mono">Zero-Timeout</span>
+              </div>
+            </div>
+          ) : user && accessToken ? (
+            /* 2. Connected via OAuth with live expiration indicator */
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border transition-colors ${
+              tokenRemainingMinutes <= 15
+                ? 'bg-amber-950/80 border-amber-600/50 text-amber-300'
+                : 'bg-emerald-950/80 border-emerald-600/40 text-emerald-300'
+            }`}>
+              <CheckCircle2 className={`w-4 h-4 shrink-0 ${
+                tokenRemainingMinutes <= 15 ? 'text-amber-400' : 'text-emerald-400'
+              }`} />
+              <div className="leading-tight">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-white text-[11px]">Gmail Connected</span>
+                  {tokenRemainingMinutes > 0 && (
+                    <span className={`text-[10px] font-mono px-1 rounded ${
+                      tokenRemainingMinutes <= 15
+                        ? 'bg-amber-800 text-amber-200'
+                        : 'bg-emerald-900/80 text-emerald-300'
+                    }`}>
+                      {tokenRemainingMinutes}m
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-300 font-mono max-w-[130px] truncate block">
                   {user.email}
                 </span>
               </div>
+
+              {/* Quick 1-tap refresh button if expiring soon */}
+              {tokenRemainingMinutes <= 20 && (
+                <button
+                  type="button"
+                  onClick={onGoogleSignIn}
+                  disabled={isLoggingIn}
+                  title="Extend session for another 60 minutes"
+                  className="text-amber-300 hover:text-white p-1 rounded hover:bg-amber-800/60 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoggingIn ? 'animate-spin' : ''}`} />
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={onGoogleSignOut}
                 title="Disconnect Gmail Account"
-                className="ml-1 text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+                className="ml-0.5 text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
+            /* 3. Awaiting Login or Expired Session */
             <GoogleSignInButton
               onClick={onGoogleSignIn}
               disabled={isLoggingIn}
-              text={isLoggingIn ? 'Connecting...' : user ? 'Reconnect Gmail' : 'Login to Gmail'}
+              text={
+                isLoggingIn
+                  ? 'Connecting...'
+                  : user
+                  ? 'Session Expired · Reconnect'
+                  : 'Login to Gmail'
+              }
+              className={user ? 'border-amber-400 text-amber-900 bg-amber-50' : ''}
             />
           )}
 

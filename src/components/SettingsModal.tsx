@@ -1,9 +1,24 @@
 import React, { useState } from 'react';
-import { X, Mail, Volume2, Clock, Building, Check, Send, AlertCircle, ChevronDown, ChevronUp, Lock } from 'lucide-react';
+import {
+  X,
+  Mail,
+  Volume2,
+  Clock,
+  Building,
+  Check,
+  Send,
+  AlertCircle,
+  Lock,
+  Zap,
+  Copy,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import { AppSettings, CylinderExchangeRecord } from '../types';
 import { sound } from '../utils/sound';
 import elthamLogo from '../assets/images/elthamlogo18.png';
-import { sendEmailViaGmailApiDirect } from '../services/kioskClient';
+import { sendEmailViaGmailApiDirect, sendEmailViaWebhook } from '../services/kioskClient';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -30,7 +45,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [soundEnabled, setSoundEnabled] = useState(settings.soundEnabled);
   const [autoResetSeconds, setAutoResetSeconds] = useState(settings.autoResetSeconds);
   const [smtpPass, setSmtpPass] = useState(settings.smtpPass || '');
-  const [showAdvancedEmail, setShowAdvancedEmail] = useState(false);
+  const [googleScriptWebhookUrl, setGoogleScriptWebhookUrl] = useState(
+    settings.googleScriptWebhookUrl || ''
+  );
+  const [showScriptGuide, setShowScriptGuide] = useState(false);
+  const [scriptCopied, setScriptCopied] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Test email state
@@ -46,6 +65,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setSoundEnabled(settings.soundEnabled);
       setAutoResetSeconds(settings.autoResetSeconds);
       setSmtpPass(settings.smtpPass || '');
+      setGoogleScriptWebhookUrl(settings.googleScriptWebhookUrl || '');
       setTestResult(null);
     }
   }, [isOpen, settings]);
@@ -63,6 +83,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       soundEnabled,
       autoResetSeconds: Number(autoResetSeconds) || 10,
       smtpPass: smtpPass.trim() || settings.smtpPass || '',
+      googleScriptWebhookUrl: googleScriptWebhookUrl.trim(),
     });
     setSavedSuccess(true);
     setTimeout(() => {
@@ -73,10 +94,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleTestEmail = async () => {
     const cleanPass = smtpPass.trim().replace(/\s+/g, '');
-    if (!cleanPass && !accessToken) {
+    const cleanWebhook = googleScriptWebhookUrl.trim();
+
+    if (!cleanWebhook && !cleanPass && !accessToken) {
       setTestResult({
         success: false,
-        message: 'Please tap "Login to Gmail" in the top bar or enter your 16-character Google App Password below.',
+        message: 'Please tap "Login to Gmail" in the top bar, enter a Google Script Webhook URL, or enter your 16-character Google App Password below.',
       });
       return;
     }
@@ -84,40 +107,72 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsTestingEmail(true);
     setTestResult(null);
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-
       let succeeded = false;
       let detailMsg = '';
 
-      try {
-        const res = await fetch('/api/send-test-email', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            email: recipientEmail.trim(),
-            smtpPass: cleanPass || undefined,
-            accessToken: accessToken || undefined,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.success) {
-            succeeded = true;
-            detailMsg = `Success! Live email delivered to ${recipientEmail}. Check your inbox!`;
-          } else {
-            detailMsg = data.error || data.result?.detail || 'Failed to dispatch test email.';
-          }
+      // 1. If Webhook URL is configured, test 24/7 Zero-Timeout Kiosk Relay
+      if (cleanWebhook) {
+        const dummyRecord: CylinderExchangeRecord = {
+          id: `CFA-TEST-${Date.now().toString().slice(-4)}`,
+          timestamp: new Date().toISOString(),
+          brigadeName: 'Eltham Fire Brigade (Diagnostic Test)',
+          droppedOffCount: 2,
+          collectedCount: 2,
+          cylinderType: 'Standard 300 BAR Composite',
+          recipientEmail: recipientEmail.trim(),
+          emailStatus: 'sent',
+          emailDeliveryDetail: '',
+        };
+
+        const webhookResult = await sendEmailViaWebhook(
+          dummyRecord,
+          depotStationName,
+          recipientEmail.trim(),
+          cleanWebhook
+        );
+
+        if (webhookResult.success) {
+          succeeded = true;
+          detailMsg = `Success! Test receipt dispatched via 24/7 Zero-Timeout Relay to ${recipientEmail}. Check your inbox!`;
+        } else {
+          detailMsg = webhookResult.detail;
         }
-      } catch {
-        // Server unreachable or 404 (e.g. GitHub Pages static host)
       }
 
-      // If server route wasn't available (GitHub Pages) and we have accessToken, send directly!
+      // 2. Try server route if available and not yet succeeded
+      if (!succeeded && (cleanPass || accessToken)) {
+        try {
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+          };
+          if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`;
+          }
+
+          const res = await fetch('/api/send-test-email', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              email: recipientEmail.trim(),
+              smtpPass: cleanPass || undefined,
+              accessToken: accessToken || undefined,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.success) {
+              succeeded = true;
+              detailMsg = `Success! Live email delivered to ${recipientEmail}. Check your inbox!`;
+            } else {
+              detailMsg = data.error || data.result?.detail || 'Failed to dispatch test email.';
+            }
+          }
+        } catch {
+          // Server unreachable or 404 (e.g. GitHub Pages static host)
+        }
+      }
+
+      // 3. If server route wasn't available (GitHub Pages) and we have accessToken, send directly via Gmail API!
       if (!succeeded && accessToken) {
         const dummyRecord: CylinderExchangeRecord = {
           id: `CFA-TEST-${Date.now().toString().slice(-4)}`,
@@ -159,11 +214,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           soundEnabled,
           autoResetSeconds: Number(autoResetSeconds) || 10,
           smtpPass: cleanPass || settings.smtpPass || '',
+          googleScriptWebhookUrl: cleanWebhook || settings.googleScriptWebhookUrl || '',
         });
       } else {
         setTestResult({
           success: false,
-          message: detailMsg || 'Failed to dispatch test email. Please check your connection or Gmail login.',
+          message: detailMsg || 'Failed to dispatch test email. Please check your connection or Gmail settings.',
         });
       }
     } catch (err: any) {
@@ -275,26 +331,148 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
             </div>
 
-            {/* Direct Gmail Live Delivery Setup */}
+            {/* 24/7 Zero-Timeout Kiosk Relay (Permanent Connection) */}
             <div className="pt-2 border-t border-slate-200">
               <div className="flex items-center justify-between mb-2">
                 <span className="flex items-center gap-1.5 font-bold text-xs text-slate-800">
-                  <Lock className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Google Account App Password (for Live Inbox Delivery)</span>
+                  <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  <span>24/7 Zero-Timeout Kiosk Relay (Recommended for Tablets)</span>
                 </span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  smtpPass ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {smtpPass ? 'Password Configured' : 'Awaiting Password'}
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    googleScriptWebhookUrl
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {googleScriptWebhookUrl ? 'Relay Active (Never Times Out)' : 'Optional'}
                 </span>
               </div>
 
               <div className="space-y-2 text-xs bg-white p-3 rounded-xl border border-slate-200">
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  <strong>Why is this required?</strong> To protect your account, Google blocks automated background emails unless authorized with a 16-character App Password.
+                  <strong>How to make sure the connection never times out:</strong> Standard Google
+                  logins expire after 60 minutes. A <strong>Google Apps Script Webhook</strong> runs
+                  directly in your Google account and <strong>never times out</strong>.
                 </p>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Google Apps Script Webhook URL:
+                  </label>
+                  <input
+                    type="url"
+                    value={googleScriptWebhookUrl}
+                    onChange={(e) => setGoogleScriptWebhookUrl(e.target.value)}
+                    placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+
+                {/* Collapsible Step-by-Step Setup Guide */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowScriptGuide(!showScriptGuide)}
+                    className="flex items-center justify-between w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-bold text-slate-700 transition-colors cursor-pointer"
+                  >
+                    <span>Click here to view 2-minute setup guide & code</span>
+                    {showScriptGuide ? (
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+
+                  {showScriptGuide && (
+                    <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-[11px] text-slate-700">
+                      <p className="font-semibold text-slate-800">
+                        1. Open Google Apps Script:
+                      </p>
+                      <a
+                        href="https://script.new"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-bold underline"
+                      >
+                        script.new ↗ (signed in as elthamcfabacylinderexchange@gmail.com)
+                      </a>
+
+                      <p className="font-semibold text-slate-800 pt-1">
+                        2. Replace all script code with this snippet:
+                      </p>
+                      <div className="relative">
+                        <pre className="p-2.5 bg-slate-900 text-emerald-400 rounded-lg font-mono text-[10px] overflow-x-auto leading-relaxed">
+{`function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  GmailApp.sendEmail(data.to, data.subject, "", {
+    htmlBody: data.html,
+    name: "CFA BA Cylinder Exchange Kiosk"
+  });
+  return ContentService.createTextOutput(JSON.stringify({ result: "sent" }))
+    .setMimeType(ContentService.MimeType.JSON);
+}`}
+                        </pre>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  GmailApp.sendEmail(data.to, data.subject, "", {
+    htmlBody: data.html,
+    name: "CFA BA Cylinder Exchange Kiosk"
+  });
+  return ContentService.createTextOutput(JSON.stringify({ result: "sent" }))
+    .setMimeType(ContentService.MimeType.JSON);
+}`);
+                            setScriptCopied(true);
+                            setTimeout(() => setScriptCopied(false), 2000);
+                          }}
+                          className="absolute right-2 top-2 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded text-[10px] font-sans font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          {scriptCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{scriptCopied ? 'Copied!' : 'Copy Script'}</span>
+                        </button>
+                      </div>
+
+                      <p className="font-semibold text-slate-800 pt-1">
+                        3. Deploy as a Web App:
+                      </p>
+                      <ul className="list-disc list-inside space-y-0.5 text-slate-600">
+                        <li>Click <strong>Deploy</strong> &rarr; <strong>New deployment</strong></li>
+                        <li>Click the gear icon &rarr; select <strong>Web app</strong></li>
+                        <li>Execute as: <strong>Me (elthamcfabacylinderexchange@gmail.com)</strong></li>
+                        <li>Who has access: <strong>Anyone</strong></li>
+                        <li>Click <strong>Deploy</strong> and copy the <strong>Web app URL</strong></li>
+                      </ul>
+                      <p className="text-[10px] text-slate-500 pt-1">
+                        Once pasted above, this kiosk will deliver receipts forever with 0 timeouts.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Google Account App Password */}
+            <div className="pt-2 border-t border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="flex items-center gap-1.5 font-bold text-xs text-slate-800">
+                  <Lock className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Alternative: Google Account App Password</span>
+                </span>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    smtpPass ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {smtpPass ? 'Configured' : 'Optional'}
+                </span>
+              </div>
+
+              <div className="space-y-2 text-xs bg-white p-3 rounded-xl border border-slate-200">
                 <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                  <span>1. Generate your 16-letter password:</span>
+                  <span>Generate 16-letter App Password:</span>
                   <a
                     href="https://myaccount.google.com/apppasswords"
                     target="_blank"
@@ -305,9 +483,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </a>
                 </div>
                 <div>
-                  <span className="block text-[11px] text-slate-500 font-medium mb-1">
-                    2. Paste the 16 letters below:
-                  </span>
                   <input
                     type="password"
                     value={smtpPass}
@@ -316,9 +491,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
-                <p className="text-[10px] text-slate-400">
-                  Once saved, every exchange automatically sends an official receipt directly to your inbox without any firefighter interaction.
-                </p>
               </div>
             </div>
           </div>

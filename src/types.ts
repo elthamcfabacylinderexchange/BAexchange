@@ -38,6 +38,7 @@ export interface AppSettings {
   smtpSecure?: boolean;
   smtpUser?: string;
   smtpPass?: string;
+  googleScriptWebhookUrl?: string;
 }
 
 export interface ExchangeSubmissionPayload {

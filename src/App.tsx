@@ -14,6 +14,7 @@ import {
   googleSignIn,
   googleSignInRedirect,
   checkRedirectAuth,
+  subscribeToTokenStatus,
   logout,
   setCachedAccessToken,
 } from './services/auth';
@@ -32,6 +33,7 @@ export default function App() {
   // Auth & Gmail session state
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [tokenRemainingMinutes, setTokenRemainingMinutes] = useState<number>(0);
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [authError, setAuthError] = useState<{ code?: string; message?: string } | null>(null);
 
@@ -62,23 +64,30 @@ export default function App() {
     return () => cleanup();
   }, []);
 
-  // Initialize Firebase Auth listener on mount
+  // Initialize Firebase Auth listener and token status tracker on mount
   useEffect(() => {
-    const unsubscribe = initAuth(
+    const unsubscribeAuth = initAuth(
       (currentUser, token) => {
         setUser(currentUser);
         if (token) {
           setAccessToken(token);
-          setCachedAccessToken(token);
         }
       },
       () => {
         setUser(null);
         setAccessToken(null);
-        setCachedAccessToken(null);
       }
     );
-    return () => unsubscribe();
+
+    const unsubscribeToken = subscribeToTokenStatus((token, remaining) => {
+      setAccessToken(token);
+      setTokenRemainingMinutes(remaining);
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeToken();
+    };
   }, []);
 
   // Check for redirect result on mount (if user returned from full page redirect)
@@ -234,6 +243,8 @@ export default function App() {
         depotName={settings.depotStationName}
         user={user}
         accessToken={accessToken}
+        tokenRemainingMinutes={tokenRemainingMinutes}
+        is24HourRelayActive={Boolean(settings.googleScriptWebhookUrl?.trim() || settings.smtpPass?.trim())}
         onGoogleSignIn={handleGoogleSignIn}
         onGoogleSignOut={handleGoogleSignOut}
         isLoggingIn={isLoggingIn}
