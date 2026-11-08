@@ -33,6 +33,7 @@ const DEFAULT_SETTINGS = {
   smtpSecure: true,
   smtpUser: 'elthamcfabacylinderexchange@gmail.com',
   smtpPass: '',
+  googleScriptWebhookUrl: '',
 };
 
 function getSettings() {

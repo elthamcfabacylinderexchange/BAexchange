@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoResetSeconds: 10,
   requireMemberDetails: false,
   smtpPass: '',
+  googleScriptWebhookUrl: '',
 };
 
 const STORAGE_SETTINGS_KEY = 'cfa_kiosk_settings_v1';
@@ -237,28 +238,38 @@ export async function sendEmailViaGmailApiDirect(
 
 // 1. Fetch Settings (hybrid: server or localStorage fallback)
 export async function getKioskSettings(): Promise<AppSettings> {
+  // Read local settings first
+  let localSettings: Partial<AppSettings> = {};
+  try {
+    const cached = localStorage.getItem(STORAGE_SETTINGS_KEY);
+    if (cached) {
+      localSettings = JSON.parse(cached);
+    }
+  } catch {}
+
   try {
     const res = await fetch('/api/settings');
     if (res.ok) {
       const data = await res.json();
       if (data) {
-        localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(data));
-        return { ...DEFAULT_SETTINGS, ...data };
+        // Merge so client-saved webhookUrl or password is never wiped out by server defaults
+        const merged: AppSettings = {
+          ...DEFAULT_SETTINGS,
+          ...localSettings,
+          ...data,
+          googleScriptWebhookUrl:
+            data.googleScriptWebhookUrl || localSettings.googleScriptWebhookUrl || '',
+          smtpPass: data.smtpPass || localSettings.smtpPass || '',
+        };
+        localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(merged));
+        return merged;
       }
     }
   } catch {
     // static host (GitHub Pages) or offline
   }
 
-  // Fallback to localStorage
-  try {
-    const cached = localStorage.getItem(STORAGE_SETTINGS_KEY);
-    if (cached) {
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(cached) };
-    }
-  } catch {}
-
-  return DEFAULT_SETTINGS;
+  return { ...DEFAULT_SETTINGS, ...localSettings };
 }
 
 // 2. Save Settings

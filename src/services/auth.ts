@@ -138,7 +138,8 @@ export const initAuth = (
       }
       if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
     } else {
-      clearStoredAccessToken();
+      // Don't wipe stored token on passive initial unresolved auth state
+      cachedAccessToken = null;
       if (onAuthFailure) onAuthFailure();
     }
   });

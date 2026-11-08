@@ -15,11 +15,13 @@ import {
   googleSignInRedirect,
   checkRedirectAuth,
   subscribeToTokenStatus,
+  getStoredAccessToken,
   logout,
   setCachedAccessToken,
 } from './services/auth';
 import { setupAutoFullscreen } from './utils/fullscreen';
 import {
+  DEFAULT_SETTINGS,
   getKioskSettings,
   saveKioskSettings,
   submitKioskExchange,
@@ -30,22 +32,27 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [previewReceiptId, setPreviewReceiptId] = useState<string | null>(null);
 
+  // Synchronously restore token and remaining minutes on Frame 0
+  const initialToken = typeof window !== 'undefined' ? getStoredAccessToken() : { token: null, remainingMinutes: 0 };
+
   // Auth & Gmail session state
   const [user, setUser] = useState<User | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [tokenRemainingMinutes, setTokenRemainingMinutes] = useState<number>(0);
+  const [accessToken, setAccessToken] = useState<string | null>(initialToken.token);
+  const [tokenRemainingMinutes, setTokenRemainingMinutes] = useState<number>(initialToken.remainingMinutes);
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [authError, setAuthError] = useState<{ code?: string; message?: string } | null>(null);
 
-  // Settings
-  const [settings, setSettings] = useState<AppSettings>({
-    recipientEmail: 'elthamcfabacylinderexchange@gmail.com',
-    senderEmail: 'elthamcfabacylinderexchange@gmail.com',
-    depotStationName: 'Eltham Fire Brigade BA Maintenance Cache',
-    soundEnabled: true,
-    autoResetSeconds: 8,
-    requireMemberDetails: false,
-    smtpPass: '',
+  // Settings - load immediately from localStorage on startup so it never lags behind reboot
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('cfa_kiosk_settings_v1');
+        if (raw) {
+          return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+        }
+      } catch {}
+    }
+    return DEFAULT_SETTINGS;
   });
 
   // Kiosk State - No default brigade selected to force user selection

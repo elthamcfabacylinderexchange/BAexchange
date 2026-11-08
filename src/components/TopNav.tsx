@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Maximize2, Minimize2, RotateCcw, CheckCircle2, LogOut, RefreshCw, Zap } from 'lucide-react';
+import { Maximize2, Minimize2, RotateCcw, CheckCircle2, LogOut, RefreshCw, Zap, Settings as SettingsIcon } from 'lucide-react';
 import { User } from 'firebase/auth';
 import elthamLogo from '../assets/images/elthamlogo18.png';
 import { GoogleSignInButton } from './GoogleSignInButton';
@@ -96,17 +96,24 @@ export const TopNav: React.FC<TopNavProps> = ({
 
         {/* Tablet Actions */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* 1. Permanent 24/7 Relay Badge (Zero-Timeout) */}
+          {/* 1. Permanent 24/7 Relay Active: Explicit Gmail Connected Status */}
           {is24HourRelayActive ? (
             <div
               onClick={onOpenSettings}
-              title="24/7 Kiosk Email Relay Active (Never times out). Click to open settings."
-              className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-600/40 px-3 py-1.5 rounded-xl text-xs text-emerald-300 cursor-pointer hover:bg-emerald-900/80 transition-colors"
+              title="Permanent 24/7 Gmail Connection Active (Survives reboots, zero timeouts). Tap to open settings."
+              className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-600/50 px-3 py-1.5 rounded-xl text-xs text-emerald-300 cursor-pointer hover:bg-emerald-900/80 transition-colors shadow-2xs"
             >
-              <Zap className="w-4 h-4 text-emerald-400 shrink-0 fill-emerald-400/30" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <div className="leading-tight">
-                <span className="font-bold block text-white text-[11px]">24/7 Email Active</span>
-                <span className="text-[10px] text-emerald-400 font-mono">Zero-Timeout</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold block text-white text-[11px]">Gmail Connected</span>
+                  <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-800 text-emerald-200 uppercase tracking-wider">
+                    24/7 Permanent
+                  </span>
+                </div>
+                <span className="text-[10px] text-emerald-300 font-mono max-w-[160px] truncate block">
+                  {user?.email || 'elthamcfabacylinderexchange@gmail.com'}
+                </span>
               </div>
             </div>
           ) : user && accessToken ? (
@@ -177,6 +184,17 @@ export const TopNav: React.FC<TopNavProps> = ({
 
           {/* Desktop/Tablet App Install Button */}
           <PWAInstallButton />
+
+          {/* Settings Button */}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            title="Kiosk Settings & 24/7 Email Configuration"
+            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+          >
+            <SettingsIcon className="w-4 h-4 text-slate-400" />
+            <span className="hidden sm:inline">Settings</span>
+          </button>
 
           <button
             type="button"
