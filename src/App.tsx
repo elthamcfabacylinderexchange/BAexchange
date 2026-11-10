@@ -311,6 +311,11 @@ export default function App() {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         accessToken={accessToken}
+        user={user}
+        tokenRemainingMinutes={tokenRemainingMinutes}
+        onGoogleSignIn={handleGoogleSignIn}
+        onGoogleSignOut={handleGoogleSignOut}
+        isLoggingIn={isLoggingIn}
         onSave={handleSaveSettings}
       />
 

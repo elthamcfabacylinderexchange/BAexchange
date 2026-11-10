@@ -14,17 +14,26 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  RefreshCw,
+  LogOut,
 } from 'lucide-react';
+import { User } from 'firebase/auth';
 import { AppSettings, CylinderExchangeRecord } from '../types';
 import { sound } from '../utils/sound';
 import elthamLogo from '../assets/images/elthamlogo18.png';
 import { sendEmailViaGmailApiDirect, sendEmailViaWebhook } from '../services/kioskClient';
+import { GoogleSignInButton } from './GoogleSignInButton';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   settings: AppSettings;
   accessToken?: string | null;
+  user?: User | null;
+  tokenRemainingMinutes?: number;
+  onGoogleSignIn?: () => void;
+  onGoogleSignOut?: () => void;
+  isLoggingIn?: boolean;
   onSave: (newSettings: AppSettings) => void;
 }
 
@@ -33,9 +42,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   settings,
   accessToken,
+  user,
+  tokenRemainingMinutes = 0,
+  onGoogleSignIn,
+  onGoogleSignOut,
+  isLoggingIn = false,
   onSave,
 }) => {
   const [activeTab, setActiveTab] = useState<'relay' | 'email' | 'station'>('relay');
+
 
   const [recipientEmail, setRecipientEmail] = useState(
     settings.recipientEmail || 'elthamcfabacylinderexchange@gmail.com'
@@ -313,19 +328,116 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Form Body (Scrollable) */}
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
-          {/* TAB 1: 24/7 Zero-Timeout Kiosk Relay */}
+          {/* TAB 1: 24/7 Zero-Timeout Kiosk Relay & Gmail Login */}
           {activeTab === 'relay' && (
             <div className="space-y-4">
+              {/* Option to Re-login to Gmail */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-white border border-slate-200 flex items-center justify-center p-1 shadow-2xs shrink-0">
+                      <svg viewBox="0 0 48 48" className="w-4 h-4">
+                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                        <path fill="none" d="M0 0h48v48H0z"/>
+                      </svg>
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                      Gmail Interactive Login
+                    </span>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      user && accessToken
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {user && accessToken ? 'Session Active' : 'Logged Out / Expired'}
+                  </span>
+                </div>
+
+                {user && accessToken ? (
+                  <div className="bg-white rounded-xl p-3 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900 font-mono truncate">
+                          {user.email || 'elthamcfabacylinderexchange@gmail.com'}
+                        </span>
+                        {tokenRemainingMinutes > 0 && (
+                          <span
+                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold shrink-0 ${
+                              tokenRemainingMinutes <= 15
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}
+                          >
+                            {tokenRemainingMinutes}m left
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Interactive Google session is active. Google OAuth tokens expire every 60 minutes.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {onGoogleSignIn && (
+                        <button
+                          type="button"
+                          onClick={onGoogleSignIn}
+                          disabled={isLoggingIn}
+                          className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isLoggingIn ? 'animate-spin' : ''}`} />
+                          <span>{isLoggingIn ? 'Connecting...' : 'Re-login to Gmail'}</span>
+                        </button>
+                      )}
+                      {onGoogleSignOut && (
+                        <button
+                          type="button"
+                          onClick={onGoogleSignOut}
+                          title="Sign out of Gmail"
+                          className="p-2 text-slate-500 hover:text-red-600 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200"
+                        >
+                          <LogOut className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl p-3.5 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                    <div>
+                      <span className="text-xs font-bold text-slate-900 block">
+                        Direct Gmail Session Disconnected
+                      </span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Log in as <span className="font-mono font-medium text-slate-700">elthamcfabacylinderexchange@gmail.com</span> to dispatch receipts directly via Gmail.
+                      </p>
+                    </div>
+                    {onGoogleSignIn && (
+                      <GoogleSignInButton
+                        onClick={onGoogleSignIn}
+                        disabled={isLoggingIn}
+                        text={isLoggingIn ? 'Connecting...' : 'Re-login to Gmail'}
+                        className="shrink-0 shadow-xs"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-2xl text-amber-950 text-xs leading-relaxed">
                 <span className="font-extrabold block text-sm text-amber-900 mb-1 flex items-center gap-1.5">
                   <Zap className="w-4 h-4 text-amber-600 fill-amber-600" />
-                  Why doesn&apos;t the tablet auto-login after restart?
+                  Why does Gmail log out after rebooting or after 1 hour?
                 </span>
-                Google&apos;s security protocol strictly invalidates interactive login tokens after 60
-                minutes. When the tablet restarts or sits idle overnight, Google requires a user click.
+                Google strictly limits interactive browser login sessions to 60 minutes.
                 <p className="mt-1.5 font-medium text-slate-800">
-                  <strong>The Permanent Solution:</strong> Setting up the free Google Apps Script
-                  Webhook below runs 24/7 inside your Google account. It{' '}
+                  <strong>Permanent 24/7 Fix:</strong> Setting up the free Google Apps Script Webhook
+                  below runs directly inside your Google account. It{' '}
                   <strong>never times out, never expires, and survives every tablet reboot</strong>.
                 </p>
               </div>

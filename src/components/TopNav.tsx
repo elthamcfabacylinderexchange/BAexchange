@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { Maximize2, Minimize2, RotateCcw, CheckCircle2, LogOut, RefreshCw, Zap, Settings as SettingsIcon } from 'lucide-react';
+import React, { useRef } from 'react';
+import { Maximize2, Minimize2, RotateCcw, CheckCircle2, LogOut, RefreshCw } from 'lucide-react';
 import { User } from 'firebase/auth';
 import elthamLogo from '../assets/images/elthamlogo18.png';
 import { GoogleSignInButton } from './GoogleSignInButton';
@@ -54,11 +54,12 @@ export const TopNav: React.FC<TopNavProps> = ({
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800 text-white shadow-sm">
+    <header className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800 text-white shadow-sm select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        {/* Brand Mark with Eltham Logo (Triple tap opens settings discretely) */}
+        {/* Brand Mark with Eltham Logo (Click / Tap 3 times to access settings) */}
         <div
-          className="flex items-center gap-3 shrink-0 cursor-pointer select-none"
+          className="flex items-center gap-3 shrink-0 cursor-pointer select-none active:scale-[0.98] transition-transform"
+          style={{ touchAction: 'manipulation' }}
           onClick={() => {
             logoClickCount.current += 1;
             if (logoClickCount.current >= 3) {
@@ -68,14 +69,15 @@ export const TopNav: React.FC<TopNavProps> = ({
             if (logoClickTimer.current) clearTimeout(logoClickTimer.current);
             logoClickTimer.current = setTimeout(() => {
               logoClickCount.current = 0;
-            }, 1000);
+            }, 1200);
           }}
+          title="Eltham Fire Brigade CFA (Click 3 times to access Settings)"
         >
           <div className="h-11 w-9 bg-white rounded-md p-0.5 shadow-xs shrink-0 flex items-center justify-center">
             <img
               src={elthamLogo}
-              alt="Eltham Fire Brigade CFA"
-              className="w-full h-full object-contain"
+              alt="Eltham Fire Brigade"
+              className="w-full h-full object-contain pointer-events-none"
               referrerPolicy="no-referrer"
             />
           </div>
@@ -99,9 +101,8 @@ export const TopNav: React.FC<TopNavProps> = ({
           {/* 1. Permanent 24/7 Relay Active: Explicit Gmail Connected Status */}
           {is24HourRelayActive ? (
             <div
-              onClick={onOpenSettings}
-              title="Permanent 24/7 Gmail Connection Active (Survives reboots, zero timeouts). Tap to open settings."
-              className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-600/50 px-3 py-1.5 rounded-xl text-xs text-emerald-300 cursor-pointer hover:bg-emerald-900/80 transition-colors shadow-2xs"
+              title="Permanent 24/7 Gmail Connection Active (Survives reboots, zero timeouts)"
+              className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-600/50 px-3 py-1.5 rounded-xl text-xs text-emerald-300 shadow-2xs"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <div className="leading-tight">
@@ -185,17 +186,6 @@ export const TopNav: React.FC<TopNavProps> = ({
           {/* Desktop/Tablet App Install Button */}
           <PWAInstallButton />
 
-          {/* Settings Button */}
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            title="Kiosk Settings & 24/7 Email Configuration"
-            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
-          >
-            <SettingsIcon className="w-4 h-4 text-slate-400" />
-            <span className="hidden sm:inline">Settings</span>
-          </button>
-
           <button
             type="button"
             onClick={onResetKiosk}
@@ -219,3 +209,4 @@ export const TopNav: React.FC<TopNavProps> = ({
     </header>
   );
 };
+
