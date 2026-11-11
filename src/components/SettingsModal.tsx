@@ -133,8 +133,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       let succeeded = false;
       let detailMsg = '';
 
-      // 1. If Webhook URL is configured, test 24/7 Zero-Timeout Kiosk Relay
-      if (cleanWebhook) {
+      // 1. Try server route first if available (allows checking actual Google response)
+      try {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+
+        const res = await fetch('/api/send-test-email', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            email: recipientEmail.trim(),
+            webhookUrl: cleanWebhook || undefined,
+            smtpPass: cleanPass || undefined,
+            accessToken: accessToken || undefined,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success) {
+            succeeded = true;
+            detailMsg = `Success! Live test email delivered to ${recipientEmail}. Check your inbox!`;
+          }
+        }
+      } catch {
+        // Server unreachable (e.g. GitHub Pages static host)
+      }
+
+      // 2. If Webhook URL is configured and server route didn't handle it
+      if (!succeeded && cleanWebhook) {
         const dummyRecord: CylinderExchangeRecord = {
           id: `CFA-TEST-${Date.now().toString().slice(-4)}`,
           timestamp: new Date().toISOString(),
@@ -156,42 +186,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         if (webhookResult.success) {
           succeeded = true;
-          detailMsg = `Success! Test receipt dispatched via 24/7 Zero-Timeout Relay to ${recipientEmail}. Check your inbox!`;
+          detailMsg = `Dispatched to Google Script Webhook! If no email arrives, ensure you clicked "Run" on setup in Apps Script to authorize permissions.`;
         } else {
           detailMsg = webhookResult.detail;
-        }
-      }
-
-      // 2. Try server route if available and not yet succeeded
-      if (!succeeded && (cleanPass || accessToken)) {
-        try {
-          const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-          };
-          if (accessToken) {
-            headers['Authorization'] = `Bearer ${accessToken}`;
-          }
-
-          const res = await fetch('/api/send-test-email', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              email: recipientEmail.trim(),
-              smtpPass: cleanPass || undefined,
-              accessToken: accessToken || undefined,
-            }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.success) {
-              succeeded = true;
-              detailMsg = `Success! Live email delivered to ${recipientEmail}. Check your inbox!`;
-            } else {
-              detailMsg = data.error || data.result?.detail || 'Failed to dispatch test email.';
-            }
-          }
-        } catch {
-          // Server unreachable or 404 (e.g. GitHub Pages static host)
         }
       }
 
@@ -255,14 +252,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  const scriptCode = `function doPost(e) {
-  var data = JSON.parse(e.postData.contents);
-  GmailApp.sendEmail(data.to, data.subject, "", {
-    htmlBody: data.html,
-    name: "CFA BA Cylinder Exchange Kiosk"
-  });
-  return ContentService.createTextOutput(JSON.stringify({ result: "sent" }))
-    .setMimeType(ContentService.MimeType.JSON);
+  const scriptCode = `// 1. SELECT "setup" AND CLICK RUN (▶️) ONCE TO GRANT GMAIL PERMISSION
+function setup() {
+  GmailApp.sendEmail(
+    Session.getActiveUser().getEmail(),
+    "CFA BA Kiosk Webhook Test",
+    "Success! Your Google Apps Script is authorized and ready to dispatch kiosk receipts."
+  );
+}
+
+// 2. Automated webhook that sends exchange receipts 24/7
+function doPost(e) {
+  try {
+    var contents = e && e.postData && e.postData.contents ? e.postData.contents : "{}";
+    var data = JSON.parse(contents);
+    var to = data.to || "elthamcfabacylinderexchange@gmail.com";
+    var subject = data.subject || "CFA BA Cylinder Exchange Receipt";
+    var html = data.html || "<p>Exchange Logged</p>";
+
+    GmailApp.sendEmail(to, subject, "Please view receipt in an HTML email client.", {
+      htmlBody: html,
+      name: "CFA BA Cylinder Exchange Kiosk"
+    });
+
+    return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }`;
 
   return (
@@ -619,16 +637,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
 
                     <div>
+                      <span className="font-bold text-red-600 block mb-1">
+                        Step 3 (CRITICAL): Authorize Gmail Permissions
+                      </span>
+                      <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-slate-700 bg-amber-50/80 p-3 rounded-xl border border-amber-300">
+                        <li>In the Apps Script toolbar, make sure <code className="bg-white px-1 py-0.5 rounded font-bold text-slate-900 border border-slate-300">setup</code> is selected in the function dropdown.</li>
+                        <li>Click the <strong>Run</strong> button (the play icon ▶️).</li>
+                        <li>Google will display <strong>&quot;Authorization required&quot;</strong> &rarr; click <strong>Review permissions</strong>.</li>
+                        <li>Select <strong>elthamcfabacylinderexchange@gmail.com</strong>.</li>
+                        <li>Click <strong>Advanced</strong> (bottom left) &rarr; click <strong>Go to Untitled project (unsafe)</strong> &rarr; click <strong>Allow</strong>.</li>
+                        <li><em>Check your inbox! You will immediately receive a test email proving Gmail is authorized!</em></li>
+                      </ol>
+                    </div>
+
+                    <div>
                       <span className="font-bold text-slate-900 block mb-1">
-                        Step 3: Deploy as Web App
+                        Step 4: Deploy as Web App
                       </span>
                       <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-600 bg-white p-3 rounded-xl border border-slate-200">
-                        <li>In Apps Script, click the blue <strong>Deploy</strong> button &rarr; <strong>New deployment</strong></li>
+                        <li>Click the blue <strong>Deploy</strong> button (top right) &rarr; <strong>New deployment</strong></li>
                         <li>Click the gear icon next to &quot;Select type&quot; &rarr; select <strong>Web app</strong></li>
                         <li>Set <strong>Execute as</strong>: <code className="bg-slate-100 px-1 py-0.5 rounded font-bold">Me (elthamcfabacylinderexchange@gmail.com)</code></li>
-                        <li>Set <strong>Who has access</strong>: <code className="bg-slate-100 px-1 py-0.5 rounded font-bold">Anyone</code></li>
-                        <li>Click <strong>Deploy</strong>, grant permissions, and copy the <strong>Web app URL</strong></li>
-                        <li>Paste that URL into the input field above and click <strong>Save Settings</strong></li>
+                        <li>Set <strong>Who has access</strong>: <code className="bg-slate-100 px-1 py-0.5 rounded font-bold text-red-600">Anyone</code> (do not select &quot;Only myself&quot;)</li>
+                        <li>Click <strong>Deploy</strong> and copy the <strong>Web app URL</strong> (must end in <code>/exec</code>)</li>
+                        <li>Paste that URL into the box above and click <strong>Save Settings</strong></li>
                       </ol>
                     </div>
                   </div>

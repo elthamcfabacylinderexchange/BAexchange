@@ -136,6 +136,21 @@ export async function sendEmailViaWebhook(
   webhookUrl: string
 ): Promise<{ success: boolean; detail: string }> {
   try {
+    let cleanUrl = (webhookUrl || '').trim();
+    if (!cleanUrl || !cleanUrl.startsWith('http')) {
+      return {
+        success: false,
+        detail: 'Invalid Webhook URL. Please paste the Web App URL from Google Apps Script (starts with https://script.google.com/macros/s/)',
+      };
+    }
+
+    if (cleanUrl.includes('/edit')) {
+      cleanUrl = cleanUrl.replace(/\/edit.*$/, '/exec');
+    }
+    if (cleanUrl.includes('/dev')) {
+      cleanUrl = cleanUrl.replace(/\/dev.*$/, '/exec');
+    }
+
     const htmlContent = generateClientEmailHtml(record, depotName);
     const subject = `[CFA BA Kiosk] ${record.brigadeName} - Exchange Receipt (${record.droppedOffCount} In / ${record.collectedCount} Out)`;
 
@@ -150,7 +165,7 @@ export async function sendEmailViaWebhook(
     };
 
     // Google Apps Script redirects with 302; mode: 'no-cors' allows browser dispatch without CORS blockage
-    await fetch(webhookUrl, {
+    await fetch(cleanUrl, {
       method: 'POST',
       mode: 'no-cors',
       headers: {
@@ -328,21 +343,30 @@ export async function submitKioskExchange(
     const res = await fetch('/api/exchange', {
       method: 'POST',
       headers,
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        googleScriptWebhookUrl: settings.googleScriptWebhookUrl?.trim(),
+      }),
     });
 
     if (res.ok) {
       const data = await res.json();
       if (data && data.record) {
-        saveExchangeLocally(data.record);
-        return data.record;
+        if (data.record.emailStatus === 'sent') {
+          saveExchangeLocally(data.record);
+          return data.record;
+        }
+        // Server registered the exchange but email wasn't delivered from backend.
+        // Keep the server-assigned reference ID and fall through to client-side delivery!
+        initialRecord.id = data.record.id;
+        initialRecord.timestamp = data.record.timestamp;
       }
     }
   } catch {
     // Server not available (e.g. GitHub Pages static host)
   }
 
-  // 2. Static host (GitHub Pages) or Client execution
+  // 2. Client-side dispatch: Webhook or Gmail API direct
   if (settings.googleScriptWebhookUrl?.trim()) {
     // 24/7 Zero-Timeout Kiosk Relay
     const webhookResult = await sendEmailViaWebhook(
@@ -351,8 +375,25 @@ export async function submitKioskExchange(
       targetRecipient,
       settings.googleScriptWebhookUrl.trim()
     );
-    initialRecord.emailStatus = webhookResult.success ? 'sent' : 'failed';
-    initialRecord.emailDeliveryDetail = webhookResult.detail;
+    if (webhookResult.success) {
+      initialRecord.emailStatus = 'sent';
+      initialRecord.emailDeliveryDetail = webhookResult.detail;
+    } else {
+      // If Webhook failed but we have a valid Gmail OAuth token, attempt direct Gmail API!
+      if (payload.accessToken) {
+        const emailResult = await sendEmailViaGmailApiDirect(
+          initialRecord,
+          settings.depotStationName,
+          targetRecipient,
+          payload.accessToken
+        );
+        initialRecord.emailStatus = emailResult.success ? 'sent' : 'failed';
+        initialRecord.emailDeliveryDetail = emailResult.detail;
+      } else {
+        initialRecord.emailStatus = 'failed';
+        initialRecord.emailDeliveryDetail = webhookResult.detail;
+      }
+    }
   } else if (payload.accessToken) {
     const emailResult = await sendEmailViaGmailApiDirect(
       initialRecord,
@@ -364,7 +405,7 @@ export async function submitKioskExchange(
     initialRecord.emailDeliveryDetail = emailResult.detail;
   } else {
     initialRecord.emailStatus = 'failed';
-    initialRecord.emailDeliveryDetail = 'Not delivered: Please tap "Login to Gmail" in the top bar or configure 24/7 Kiosk Relay in Settings.';
+    initialRecord.emailDeliveryDetail = 'Not delivered: Please configure the 24/7 Webhook Relay in Settings or log in to Gmail.';
   }
 
   saveExchangeLocally(initialRecord);
@@ -385,12 +426,15 @@ export async function resendKioskEmail(
     const res = await fetch(`/api/exchanges/${record.id}/resend-email`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ accessToken: accessToken || undefined }),
+      body: JSON.stringify({
+        accessToken: accessToken || undefined,
+        googleScriptWebhookUrl: settings.googleScriptWebhookUrl?.trim(),
+      }),
     });
 
     if (res.ok) {
       const data = await res.json();
-      if (data && data.record) {
+      if (data && data.record && data.record.emailStatus === 'sent') {
         saveExchangeLocally(data.record);
         return data.record;
       }
@@ -405,13 +449,15 @@ export async function resendKioskEmail(
       record.recipientEmail || settings.recipientEmail,
       settings.googleScriptWebhookUrl.trim()
     );
-    const updated = {
-      ...record,
-      emailStatus: res.success ? ('sent' as const) : ('failed' as const),
-      emailDeliveryDetail: res.detail,
-    };
-    saveExchangeLocally(updated);
-    return updated;
+    if (res.success) {
+      const updated = {
+        ...record,
+        emailStatus: 'sent' as const,
+        emailDeliveryDetail: res.detail,
+      };
+      saveExchangeLocally(updated);
+      return updated;
+    }
   }
 
   // 3. Direct client fallback for GitHub Pages via OAuth

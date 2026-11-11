@@ -190,7 +190,46 @@ Dropped Off: ${record.droppedOffCount}
 Collected: ${record.collectedCount}
 Time: ${new Date(record.timestamp).toLocaleString('en-AU', { timeZone: 'Australia/Melbourne' })}`;
 
-  // 1. If an OAuth access token is provided from Gmail Login, send directly via official Gmail API
+  // 1. Permanent 24/7 Google Apps Script Webhook Relay (Zero-Timeout)
+  const webhookUrl = (settings?.googleScriptWebhookUrl || process.env.GOOGLE_SCRIPT_WEBHOOK_URL || '').trim();
+  if (webhookUrl && webhookUrl.startsWith('http')) {
+    try {
+      let cleanUrl = webhookUrl;
+      if (cleanUrl.includes('/edit')) cleanUrl = cleanUrl.replace(/\/edit.*$/, '/exec');
+      if (cleanUrl.includes('/dev')) cleanUrl = cleanUrl.replace(/\/dev.*$/, '/exec');
+
+      const webhookRes = await fetch(cleanUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: targetRecipient,
+          subject,
+          html: htmlContent,
+          recordId: record.id,
+          brigade: record.brigadeName,
+          dropped: record.droppedOffCount,
+          collected: record.collectedCount,
+        }),
+      });
+
+      const responseBody = await webhookRes.text();
+      console.log(`[SERVER WEBHOOK DISPATCH] Status: ${webhookRes.status}, Response: ${responseBody.slice(0, 150)}`);
+
+      if (webhookRes.ok) {
+        return {
+          status: 'sent' as const,
+          hasSmtp: true,
+          detail: `Delivered directly to ${targetRecipient} inbox via 24/7 Zero-Timeout Kiosk Relay`,
+        };
+      } else {
+        console.warn(`[SERVER WEBHOOK WARNING] Status: ${webhookRes.status}`);
+      }
+    } catch (err: any) {
+      console.error('Server webhook dispatch error:', err);
+    }
+  }
+
+  // 2. If an OAuth access token is provided from Gmail Login, send directly via official Gmail API
   if (accessToken) {
     try {
       const mimeLines = [
@@ -352,8 +391,11 @@ app.post('/api/exchange', async (req, res) => {
     const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
     const accessToken = bearerToken || payload.accessToken || null;
 
+    const webhookUrl = payload.googleScriptWebhookUrl || payload.webhookUrl || settings.googleScriptWebhookUrl;
+    const mergedSettings = { ...settings, googleScriptWebhookUrl: webhookUrl };
+
     // Attempt email dispatch automatically (via connected Gmail API, SMTP or local queue)
-    const emailResult = await sendNotificationEmail(record, settings.depotStationName, recipient, settings, accessToken);
+    const emailResult = await sendNotificationEmail(record, settings.depotStationName, recipient, mergedSettings, accessToken);
     record.emailStatus = emailResult.status;
     record.emailDeliveryDetail = emailResult.detail;
 
@@ -387,12 +429,14 @@ app.post('/api/exchanges/:id/resend-email', async (req, res) => {
     const authHeader = req.headers.authorization;
     const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
     const accessToken = bearerToken || req.body.accessToken || null;
+    const webhookUrl = req.body.googleScriptWebhookUrl || req.body.webhookUrl || settings.googleScriptWebhookUrl;
+    const mergedSettings = { ...settings, googleScriptWebhookUrl: webhookUrl };
 
     const emailResult = await sendNotificationEmail(
       record,
       settings.depotStationName,
       record.recipientEmail || settings.recipientEmail,
-      settings,
+      mergedSettings,
       accessToken
     );
 
@@ -424,16 +468,18 @@ app.post('/api/send-test-email', async (req, res) => {
 
     const providedPass = req.body.smtpPass !== undefined ? req.body.smtpPass : settings.smtpPass;
     const rawPass = (providedPass || process.env.SMTP_PASS || '').trim().replace(/\s+/g, '');
+    const testWebhook = (req.body.webhookUrl || req.body.googleScriptWebhookUrl || settings.googleScriptWebhookUrl || '').trim();
 
-    if (!accessToken && !rawPass) {
+    if (!accessToken && !rawPass && !testWebhook) {
       return res.status(400).json({
         success: false,
-        error: 'Please log in to Gmail using the button in the top bar, or enter your 16-letter Google App Password.',
+        error: 'Please paste your Google Apps Script Webhook URL, log in to Gmail, or enter your 16-letter Google App Password.',
       });
     }
 
     const testSettings = {
       ...settings,
+      googleScriptWebhookUrl: testWebhook,
       smtpPass: rawPass,
       senderEmail,
       recipientEmail: targetEmail,

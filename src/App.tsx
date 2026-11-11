@@ -258,7 +258,7 @@ export default function App() {
       />
 
       {/* Main Tablet Layout */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 flex flex-col justify-center">
+      <main className={`flex-1 max-w-7xl w-full mx-auto p-2 sm:p-4 flex flex-col ${latestRecord ? 'justify-start sm:justify-center' : 'justify-center'}`}>
         {latestRecord ? (
           /* Completion Screen */
           <CompletionScreen
