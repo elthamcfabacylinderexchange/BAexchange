@@ -22,15 +22,15 @@ The kiosk layout is divided into two primary touch zones designed for rapid turn
 
 ```
 +-----------------------------------------------------------------------------------+
-|  [Eltham Logo] Eltham Fire Brigade CFA  |  [24/7 Permanent Active]  [Reset] [Full] |
+|  [Eltham Logo] Eltham Fire Brigade      |  [24/7 Permanent Active]  [Reset] [Full] |
 +------------------------------------+----------------------------------------------+
-|                                    |  CYLINDERS DROPPED OFF (EMPTY)               |
-|  SELECT BRIGADE                    |  [-]  [  0  ]  [+]   [+2] [+4] [+6]          |
+|                                    |  [2] CYLINDERS DROPPED OFF (EMPTY)           |
+|  [1] SELECT BRIGADE                |  [-]  [  0  ]  [+]   [+2] [+4] [+6]          |
 |  [Search Brigade Name / District]  |----------------------------------------------+
 |                                    |  CYLINDERS COLLECTED (FULL)                  |
 |  * District 14 Brigades (Quick)    |  [-]  [  0  ]  [+]   [+2] [+4] [+6]          |
 |  * All CFA Brigades (Searchable)   |----------------------------------------------+
-|                                    |  [LOG CYLINDER EXCHANGE - TAP TO FINISH]     |
+|                                    |  [3] [LOG CYLINDER EXCHANGE - TAP TO FINISH] |
 +------------------------------------+----------------------------------------------+
 ```
 
@@ -46,7 +46,7 @@ The kiosk layout is divided into two primary touch zones designed for rapid turn
 - **Touch Audio**: Realistic tactile clicks sound on increments/decrements (can be muted in Settings).
 
 ### Step 3: Complete Exchange
-- The large green **Log Cylinder Exchange** button illuminates once a brigade is chosen and at least one cylinder is recorded.
+- The large green **Finish** button illuminates once a brigade is chosen and at least one cylinder is recorded.
 - Tapping the button plays a confirmation chime, logs the exchange with a reference ID (e.g. `CFA-BA-20261110-4821`), and triggers background receipt delivery.
 
 ### Step 4: Collection Protocol Guidance (Completion Screen)

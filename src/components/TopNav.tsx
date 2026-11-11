@@ -82,14 +82,9 @@ export const TopNav: React.FC<TopNavProps> = ({
             />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-base sm:text-lg tracking-tight text-white">
-                Eltham Fire Brigade
-              </span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-600 text-white uppercase tracking-wider">
-                CFA
-              </span>
-            </div>
+            <span className="font-extrabold text-base sm:text-lg tracking-tight text-white block">
+              Eltham Fire Brigade
+            </span>
             <span className="text-xs text-amber-400 font-semibold block -mt-0.5">
               Eltham CFA BA Cylinder Exchange
             </span>

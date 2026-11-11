@@ -29,24 +29,32 @@ export const FinishSection: React.FC<FinishSectionProps> = ({
 
   return (
     <div className="bg-slate-900 text-white rounded-2xl border border-slate-800 p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div className="text-center sm:text-left space-y-0.5">
-        <div className="text-sm">
+      <div className="flex items-center gap-3 w-full sm:w-auto">
+        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-red-600 text-white font-bold text-xs shrink-0">
+          3
+        </span>
+        <div className="text-left space-y-0.5 flex-1">
           {hasBrigade ? (
             <div>
-              <span className="font-bold text-white text-base">
+              <div className="font-bold text-white text-base leading-tight">
                 {brigadeName} ·{' '}
                 <span className="text-rose-400">{droppedOffCount} Dropped</span> /{' '}
                 <span className="text-emerald-400">{collectedCount} Collected</span>
-              </span>
-              <p className="text-[11px] text-slate-400">
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
                 Receipt will automatically email upon tapping Finish
               </p>
             </div>
           ) : (
-            <span className="text-amber-400 text-xs flex items-center justify-center sm:justify-start gap-1">
-              <AlertCircle className="w-3.5 h-3.5" />
-              Select a brigade on the left to proceed
-            </span>
+            <div>
+              <div className="font-bold text-white text-base leading-tight">
+                Finish
+              </div>
+              <span className="text-amber-400 text-xs flex items-center gap-1 mt-0.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                Select a brigade on the left to proceed
+              </span>
+            </div>
           )}
         </div>
       </div>
