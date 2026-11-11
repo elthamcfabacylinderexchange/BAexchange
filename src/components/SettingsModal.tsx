@@ -32,8 +32,11 @@ interface SettingsModalProps {
   user?: User | null;
   tokenRemainingMinutes?: number;
   onGoogleSignIn?: () => void;
+  onGoogleSignInRedirect?: () => void;
   onGoogleSignOut?: () => void;
   isLoggingIn?: boolean;
+  authError?: { code?: string; message?: string } | null;
+  onClearAuthError?: () => void;
   onSave: (newSettings: AppSettings) => void;
 }
 
@@ -45,8 +48,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   user,
   tokenRemainingMinutes = 0,
   onGoogleSignIn,
+  onGoogleSignInRedirect,
   onGoogleSignOut,
   isLoggingIn = false,
+  authError,
+  onClearAuthError,
   onSave,
 }) => {
   const [activeTab, setActiveTab] = useState<'relay' | 'email' | 'station'>('relay');
@@ -408,22 +414,73 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-xl p-3.5 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-                    <div>
-                      <span className="text-xs font-bold text-slate-900 block">
-                        Direct Gmail Session Disconnected
-                      </span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Log in as <span className="font-mono font-medium text-slate-700">elthamcfabacylinderexchange@gmail.com</span> to dispatch receipts directly via Gmail.
-                      </p>
+                  <div className="bg-white rounded-xl p-4 border border-slate-200 space-y-3 shadow-2xs">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 block">
+                          Direct Gmail Session Disconnected
+                        </span>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Log in as <span className="font-mono font-medium text-slate-700">elthamcfabacylinderexchange@gmail.com</span> to dispatch receipts directly via Gmail.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        {onGoogleSignIn && (
+                          <GoogleSignInButton
+                            onClick={onGoogleSignIn}
+                            disabled={isLoggingIn}
+                            text={isLoggingIn ? 'Connecting...' : 'Login with Google'}
+                            className="shadow-xs"
+                          />
+                        )}
+                        {onGoogleSignInRedirect && (
+                          <button
+                            type="button"
+                            onClick={onGoogleSignInRedirect}
+                            disabled={isLoggingIn}
+                            title="Recommended if popups are blocked or disappear on this tablet"
+                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                          >
+                            Tablet Sign-In (Redirect)
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    {onGoogleSignIn && (
-                      <GoogleSignInButton
-                        onClick={onGoogleSignIn}
-                        disabled={isLoggingIn}
-                        text={isLoggingIn ? 'Connecting...' : 'Re-login to Gmail'}
-                        className="shrink-0 shadow-xs"
-                      />
+
+                    {/* Inline tablet helper tip */}
+                    <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between gap-2">
+                      <span>
+                        <strong>Tablet Tip:</strong> If the login window disappears or is blocked, use <strong>Tablet Sign-In (Redirect)</strong> or set up the <strong>24/7 Webhook Relay</strong> below.
+                      </span>
+                    </div>
+
+                    {/* Inline Diagnostic Message if an Auth Error is active */}
+                    {authError && (
+                      <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold flex items-center gap-1.5">
+                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>Authentication Diagnostic:</span>
+                          </span>
+                          {onClearAuthError && (
+                            <button
+                              type="button"
+                              onClick={onClearAuthError}
+                              className="text-amber-700 hover:text-amber-900 text-[10px] font-bold underline"
+                            >
+                              Dismiss
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[11px] leading-relaxed">
+                          {authError.code === 'auth/unauthorized-domain'
+                            ? `Domain '${window.location.hostname}' is not authorized in Firebase Console yet. Please add it to Authorized Domains in Firebase Authentication Settings.`
+                            : authError.code === 'auth/popup-blocked' || authError.code === 'auth/popup-closed-by-user'
+                            ? 'The login popup was closed or blocked by the tablet browser. Tap "Tablet Sign-In (Redirect)" above to log in via full-page redirect.'
+                            : authError.message || 'An error occurred while authenticating with Google.'}
+                        </p>
+                      </div>
                     )}
                   </div>
                 )}

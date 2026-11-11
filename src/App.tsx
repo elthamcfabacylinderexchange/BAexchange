@@ -314,8 +314,11 @@ export default function App() {
         user={user}
         tokenRemainingMinutes={tokenRemainingMinutes}
         onGoogleSignIn={handleGoogleSignIn}
+        onGoogleSignInRedirect={handleGoogleSignInRedirect}
         onGoogleSignOut={handleGoogleSignOut}
         isLoggingIn={isLoggingIn}
+        authError={authError}
+        onClearAuthError={() => setAuthError(null)}
         onSave={handleSaveSettings}
       />
 

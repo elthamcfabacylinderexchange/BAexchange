@@ -10,6 +10,18 @@ import {
   signOut,
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
+import { setAuthFlowActive } from '../utils/fullscreen';
+
+export const isTabletOrMobile = (): boolean => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent.toLowerCase();
+  const isTouch = navigator.maxTouchPoints > 0;
+  return (
+    /ipad|iphone|ipod|android|tablet|mobile|silk|kindle/i.test(ua) ||
+    (isTouch && /macintosh/i.test(ua))
+  );
+};
+
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
@@ -162,9 +174,15 @@ export const checkRedirectAuth = async (): Promise<{ user: User; accessToken: st
   return null;
 };
 
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+export const googleSignIn = async (options?: { forceRedirect?: boolean }): Promise<{ user: User; accessToken: string } | null> => {
+  setAuthFlowActive(true);
   try {
     isSigningIn = true;
+    if (options?.forceRedirect) {
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential?.accessToken) {
@@ -178,15 +196,18 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     throw error;
   } finally {
     isSigningIn = false;
+    setTimeout(() => setAuthFlowActive(false), 2000);
   }
 };
 
 export const googleSignInRedirect = async (): Promise<void> => {
+  setAuthFlowActive(true);
   isSigningIn = true;
   try {
     await signInWithRedirect(auth, provider);
   } finally {
     isSigningIn = false;
+    setTimeout(() => setAuthFlowActive(false), 2000);
   }
 };
 

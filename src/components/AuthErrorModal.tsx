@@ -31,6 +31,7 @@ export const AuthErrorModal: React.FC<AuthErrorModalProps> = ({
     error.message?.includes('unauthorized domain');
   const isPopupClosedByUser = error.code === 'auth/popup-closed-by-user';
   const isPopupBlocked = error.code === 'auth/popup-blocked';
+  const isNotSupported = error.code === 'auth/operation-not-supported-in-this-environment';
 
   const firebaseConsoleUrl = `https://console.firebase.google.com/project/${firebaseProjectId}/authentication/settings`;
 
@@ -53,10 +54,12 @@ export const AuthErrorModal: React.FC<AuthErrorModalProps> = ({
               <h3 className="font-extrabold text-base text-white leading-tight">
                 {isUnauthorizedDomain
                   ? 'Firebase Domain Authorization Required'
+                  : isNotSupported
+                  ? 'Popups Not Supported on Tablet'
                   : isPopupBlocked
-                  ? 'Popup Blocked by Browser'
+                  ? 'Popup Blocked by Tablet Browser'
                   : isPopupClosedByUser
-                  ? 'Login Window Closed'
+                  ? 'Login Window Closed or Disappeared'
                   : 'Google Sign-In Issue'}
               </h3>
               <p className="text-xs text-amber-100 font-medium">
@@ -151,26 +154,67 @@ export const AuthErrorModal: React.FC<AuthErrorModalProps> = ({
                 </a>
               </div>
             </div>
+          ) : isNotSupported ? (
+            <div className="space-y-3">
+              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs leading-relaxed">
+                <strong>Tablet / Home-Screen Mode Detected:</strong> Popup windows cannot be opened when running as an installed Home-Screen App (PWA) on iPads or tablets.
+                <p className="mt-1.5 font-medium text-slate-800">
+                  Please tap <strong>Sign In using Full Page Redirect</strong> below, which will navigate directly to Google Sign-In and return to the kiosk automatically.
+                </p>
+              </div>
+              {onTryRedirect && (
+                <button
+                  type="button"
+                  onClick={onTryRedirect}
+                  className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                  <span>Sign In using Full Page Redirect (Recommended for Tablets)</span>
+                </button>
+              )}
+            </div>
           ) : isPopupBlocked ? (
             <div className="space-y-3">
               <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs leading-relaxed">
-                Your browser or tablet blocked the Google login popup. Please look at the URL bar or
-                browser settings to <strong>Always Allow Popups</strong> for this site, or try the
-                full page redirect below.
+                Your tablet or browser blocked the Google login popup. Please look at your browser address bar to <strong>Always Allow Popups</strong>, or tap the button below to use full-page redirect.
               </div>
+              {onTryRedirect && (
+                <button
+                  type="button"
+                  onClick={onTryRedirect}
+                  className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                  <span>Sign In using Full Page Redirect</span>
+                </button>
+              )}
             </div>
           ) : isPopupClosedByUser ? (
             <div className="space-y-3">
               <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs leading-relaxed">
                 The sign-in window closed before completing authentication.
-                {currentHostname.includes('github.io') && (
+                {currentHostname.includes('github.io') ? (
                   <p className="mt-2 text-slate-700">
                     If this window disappeared instantly by itself without asking for credentials,
                     the domain <strong className="font-mono">{currentHostname}</strong> must be
                     added to <strong>Authorized Domains</strong> in Firebase (see button below).
                   </p>
+                ) : (
+                  <p className="mt-1.5 text-slate-700">
+                    If the tablet closed the popup automatically, try signing in with <strong>Full Page Redirect</strong> below.
+                  </p>
                 )}
               </div>
+              {onTryRedirect && (
+                <button
+                  type="button"
+                  onClick={onTryRedirect}
+                  className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                  <span>Try Full Page Redirect (Tablet Friendly)</span>
+                </button>
+              )}
 
               {currentHostname.includes('github.io') && (
                 <div className="space-y-2">
