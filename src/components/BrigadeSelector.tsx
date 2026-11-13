@@ -41,18 +41,18 @@ export const BrigadeSelector: React.FC<BrigadeSelectorProps> = ({
   return (
     <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
       {/* Title */}
-      <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-red-600 text-white font-bold text-xs">
+      <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-red-600 text-white font-bold text-sm shrink-0">
             1
           </span>
-          <h2 className="text-base sm:text-lg font-bold tracking-tight text-white">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
             Select Brigade
           </h2>
         </div>
         {selectedBrigade && (
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-            <Check className="w-3.5 h-3.5" />
+          <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+            <Check className="w-4 h-4 shrink-0" />
             <span className="truncate max-w-[140px]">{selectedBrigade}</span>
           </span>
         )}
@@ -67,7 +67,7 @@ export const BrigadeSelector: React.FC<BrigadeSelectorProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search any CFA brigade in Victoria..."
-            className="w-full pl-9 pr-9 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-900"
+            className="w-full pl-9 pr-9 py-2.5 text-base bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-900"
           />
           {searchQuery && (
             <button
@@ -82,11 +82,11 @@ export const BrigadeSelector: React.FC<BrigadeSelectorProps> = ({
 
         {/* Section Header */}
         <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
-          <span className="font-bold uppercase tracking-wider text-[11px] text-slate-600">
+          <span className="font-bold uppercase tracking-wider text-xs text-slate-600">
             {trimmedQuery ? `Search Results (${filteredBrigades.length})` : 'Favourites (8)'}
           </span>
           {!trimmedQuery && (
-            <span className="text-[11px] text-slate-400">
+            <span className="text-xs text-slate-400">
               Type above to search any brigade
             </span>
           )}
@@ -102,15 +102,15 @@ export const BrigadeSelector: React.FC<BrigadeSelectorProps> = ({
             <div className="flex items-center gap-2">
               <Plus className="w-4 h-4 text-red-600 shrink-0" />
               <div>
-                <span className="font-bold text-sm text-slate-900 block">
+                <span className="font-bold text-base text-slate-900 block">
                   Select "{trimmedQuery}"
                 </span>
-                <span className="text-[11px] text-red-700">
+                <span className="text-xs text-red-700">
                   Custom / Visiting CFA Brigade
                 </span>
               </div>
             </div>
-            <span className="text-xs font-semibold px-2 py-1 bg-red-600 text-white rounded-lg">
+            <span className="text-sm font-semibold px-2.5 py-1 bg-red-600 text-white rounded-lg">
               Use This
             </span>
           </button>
@@ -126,7 +126,7 @@ export const BrigadeSelector: React.FC<BrigadeSelectorProps> = ({
                 key={b.id}
                 type="button"
                 onClick={() => handleSelect(b)}
-                className={`min-h-[52px] p-3 text-left rounded-xl border transition-all flex flex-col justify-center relative active:scale-[0.98] ${
+                className={`min-h-[52px] px-3 py-2.5 text-left rounded-xl border transition-all flex flex-col justify-center relative active:scale-[0.98] ${
                   isSelected
                     ? 'bg-red-600 text-white border-red-600 shadow-md ring-2 ring-red-400'
                     : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
@@ -134,7 +134,7 @@ export const BrigadeSelector: React.FC<BrigadeSelectorProps> = ({
               >
                 <div className="flex items-center justify-between gap-1 w-full">
                   <span
-                    className={`font-bold text-sm leading-tight ${
+                    className={`font-bold text-base leading-tight ${
                       isSelected ? 'text-white' : 'text-slate-900'
                     }`}
                   >
@@ -143,7 +143,7 @@ export const BrigadeSelector: React.FC<BrigadeSelectorProps> = ({
                   {isSelected && <Check className="w-4 h-4 text-white shrink-0" />}
                 </div>
                 <span
-                  className={`text-[11px] mt-0.5 ${
+                  className={`text-xs mt-0.5 leading-tight ${
                     isSelected ? 'text-red-100' : 'text-slate-500'
                   }`}
                 >

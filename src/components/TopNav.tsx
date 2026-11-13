@@ -82,10 +82,10 @@ export const TopNav: React.FC<TopNavProps> = ({
             />
           </div>
           <div>
-            <span className="font-extrabold text-base sm:text-lg tracking-tight text-white block">
+            <span className="font-extrabold text-lg sm:text-xl tracking-tight text-white block leading-tight">
               Eltham Fire Brigade
             </span>
-            <span className="text-xs text-amber-400 font-semibold block -mt-0.5">
+            <span className="text-xs sm:text-sm text-amber-400 font-semibold block -mt-0.5 leading-tight">
               Eltham CFA BA Cylinder Exchange
             </span>
           </div>
@@ -97,24 +97,24 @@ export const TopNav: React.FC<TopNavProps> = ({
           {is24HourRelayActive ? (
             <div
               title="Permanent 24/7 Gmail Connection Active (Survives reboots, zero timeouts)"
-              className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-600/50 px-3 py-1.5 rounded-xl text-xs text-emerald-300 shadow-2xs"
+              className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-600/50 px-3 py-1 rounded-xl text-xs text-emerald-300 shadow-2xs"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <div className="leading-tight">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold block text-white text-[11px]">Gmail Connected</span>
-                  <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-800 text-emerald-200 uppercase tracking-wider">
+                  <span className="font-bold block text-white text-xs">Gmail Connected</span>
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-800 text-emerald-200 uppercase tracking-wider">
                     24/7 Permanent
                   </span>
                 </div>
-                <span className="text-[10px] text-emerald-300 font-mono max-w-[160px] truncate block">
+                <span className="text-[11px] text-emerald-300 font-mono max-w-[180px] truncate block">
                   {user?.email || 'elthamcfabacylinderexchange@gmail.com'}
                 </span>
               </div>
             </div>
           ) : user && accessToken ? (
             /* 2. Connected via OAuth with live expiration indicator */
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border transition-colors ${
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-xl text-xs border transition-colors ${
               tokenRemainingMinutes <= 15
                 ? 'bg-amber-950/80 border-amber-600/50 text-amber-300'
                 : 'bg-emerald-950/80 border-emerald-600/40 text-emerald-300'
@@ -124,9 +124,9 @@ export const TopNav: React.FC<TopNavProps> = ({
               }`} />
               <div className="leading-tight">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-white text-[11px]">Gmail Connected</span>
+                  <span className="font-bold text-white text-xs">Gmail Connected</span>
                   {tokenRemainingMinutes > 0 && (
-                    <span className={`text-[10px] font-mono px-1 rounded ${
+                    <span className={`text-[11px] font-mono px-1 rounded ${
                       tokenRemainingMinutes <= 15
                         ? 'bg-amber-800 text-amber-200'
                         : 'bg-emerald-900/80 text-emerald-300'
@@ -135,7 +135,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] text-slate-300 font-mono max-w-[130px] truncate block">
+                <span className="text-[11px] text-slate-300 font-mono max-w-[150px] truncate block">
                   {user.email}
                 </span>
               </div>
@@ -185,7 +185,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             type="button"
             onClick={onResetKiosk}
             title="Reset Form"
-            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-semibold cursor-pointer"
           >
             <RotateCcw className="w-4 h-4 text-slate-400" />
             <span className="hidden sm:inline">Reset</span>

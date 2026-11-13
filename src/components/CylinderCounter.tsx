@@ -40,16 +40,16 @@ export const CylinderCounter: React.FC<CylinderCounterProps> = ({
   return (
     <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
       {/* Title */}
-      <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-red-600 text-white font-bold text-xs">
+      <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-red-600 text-white font-bold text-sm shrink-0">
             2
           </span>
-          <h2 className="text-base sm:text-lg font-bold tracking-tight text-white">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
             BA Cylinder Counts
           </h2>
         </div>
-        <span className="text-xs text-slate-400">
+        <span className="text-sm text-slate-400">
           Touch + / - or quick count
         </span>
       </div>
@@ -59,14 +59,14 @@ export const CylinderCounter: React.FC<CylinderCounterProps> = ({
         <div className="p-4 rounded-xl bg-rose-50/70 border-2 border-rose-200 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase text-rose-700 tracking-wider">
+              <span className="text-sm font-black uppercase text-rose-700 tracking-wider">
                 Dropping Off
               </span>
-              <span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded">
+              <span className="text-xs font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded">
                 Empty / Used
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-sm text-slate-500 mt-0.5">
               Cylinders you are returning
             </p>
           </div>
@@ -83,7 +83,7 @@ export const CylinderCounter: React.FC<CylinderCounterProps> = ({
             </button>
 
             <div className="min-w-[80px] text-center">
-              <span className="text-5xl font-black text-slate-900 tabular-nums leading-none">
+              <span className="text-6xl font-black text-slate-900 tabular-nums leading-none">
                 {droppedOffCount}
               </span>
             </div>
@@ -104,7 +104,7 @@ export const CylinderCounter: React.FC<CylinderCounterProps> = ({
                 key={num}
                 type="button"
                 onClick={() => handleDropDirect(num)}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${
+                className={`flex-1 py-1.5 text-sm font-bold rounded-lg border transition-all ${
                   droppedOffCount === num
                     ? 'bg-rose-600 text-white border-rose-700 shadow-xs'
                     : 'bg-white hover:bg-rose-100 text-slate-700 border-rose-200'
@@ -120,14 +120,14 @@ export const CylinderCounter: React.FC<CylinderCounterProps> = ({
         <div className="p-4 rounded-xl bg-emerald-50/70 border-2 border-emerald-200 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase text-emerald-700 tracking-wider">
+              <span className="text-sm font-black uppercase text-emerald-700 tracking-wider">
                 Collecting
               </span>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">
+              <span className="text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">
                 Full
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-sm text-slate-500 mt-0.5">
               Full cylinders you are taking
             </p>
           </div>
@@ -144,7 +144,7 @@ export const CylinderCounter: React.FC<CylinderCounterProps> = ({
             </button>
 
             <div className="min-w-[80px] text-center">
-              <span className="text-5xl font-black text-slate-900 tabular-nums leading-none">
+              <span className="text-6xl font-black text-slate-900 tabular-nums leading-none">
                 {collectedCount}
               </span>
             </div>
@@ -165,7 +165,7 @@ export const CylinderCounter: React.FC<CylinderCounterProps> = ({
                 key={num}
                 type="button"
                 onClick={() => handleCollectDirect(num)}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${
+                className={`flex-1 py-1.5 text-sm font-bold rounded-lg border transition-all ${
                   collectedCount === num
                     ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
                     : 'bg-white hover:bg-emerald-100 text-slate-700 border-emerald-200'
