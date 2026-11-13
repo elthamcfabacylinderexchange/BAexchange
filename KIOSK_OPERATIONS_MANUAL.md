@@ -34,7 +34,7 @@ The kiosk layout is divided into two primary touch zones designed for rapid turn
 +------------------------------------+----------------------------------------------+
 ```
 
-### Step 1: Select Brigade
+### Step 1: Select Your Brigade
 - The firefighter selects their brigade from the left panel.
 - Fast access buttons highlight local **District 14** brigades (Eltham, Diamond Creek, Kangaroo Ground, Research, Plenty, Hurstbridge, Greensborough, etc.).
 - A search bar allows filtering any brigade across Victoria.

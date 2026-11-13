@@ -1,8 +1,7 @@
 import { Brigade } from '../types';
 
-// Exactly 8 favourite brigades for fast selection
+// Favourite visiting brigades for fast selection
 export const POPULAR_CFA_BRIGADES: Brigade[] = [
-  { id: 'eltham', name: 'Eltham', district: 'District 14', region: 'North West Region', frequent: true },
   { id: 'diamond-creek', name: 'Diamond Creek', district: 'District 14', region: 'North West Region', frequent: true },
   { id: 'research', name: 'Research', district: 'District 14', region: 'North West Region', frequent: true },
   { id: 'kangaroo-ground', name: 'Kangaroo Ground', district: 'District 14', region: 'North West Region', frequent: true },
@@ -16,6 +15,9 @@ export const POPULAR_CFA_BRIGADES: Brigade[] = [
 export const ALL_CFA_BRIGADES: Brigade[] = [
   ...POPULAR_CFA_BRIGADES,
   // District 14
+  { id: 'eltham', name: 'Eltham', district: 'District 14', region: 'North West Region' },
+  { id: 'warrandyte', name: 'Warrandyte', district: 'District 14', region: 'North West Region' },
+  { id: 'wattle-glen', name: 'Wattle Glen', district: 'District 14', region: 'North West Region' },
   { id: 'arthurs-creek', name: 'Arthurs Creek', district: 'District 14', region: 'North West Region' },
   { id: 'christmas-hills', name: 'Christmas Hills', district: 'District 14', region: 'North West Region' },
   { id: 'doreen', name: 'Doreen', district: 'District 14', region: 'North West Region' },
