@@ -18,8 +18,8 @@ function isOrderedSubsequence(query: string, target: string): boolean {
 }
 
 function getPredictiveScore(brigade: Brigade, rawQuery: string): number {
-  const q = rawQuery.toLowerCase().trim();
-  const name = brigade.name.toLowerCase();
+  const q = rawQuery.toLowerCase().trim().replace(/\s*&\s*/g, ' and ');
+  const name = brigade.name.toLowerCase().replace(/\s*&\s*/g, ' and ');
   const district = brigade.district.toLowerCase();
   const region = brigade.region.toLowerCase();
   const words = name.split(/[\s-]+/);
@@ -131,41 +131,48 @@ export const BrigadeSelector: React.FC<BrigadeSelectorProps> = ({
 
         {/* Brigades Grid */}
         {filteredBrigades.length > 0 ? (
-          <div className="grid grid-cols-2 gap-2 overflow-y-auto max-h-[380px] p-0.5">
-            {filteredBrigades.map((b) => {
-              const isSelected = selectedBrigade === b.name;
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2 overflow-y-auto max-h-[380px] p-0.5">
+              {filteredBrigades.slice(0, 100).map((b) => {
+                const isSelected = selectedBrigade === b.name;
 
-              return (
-                <button
-                  key={b.id}
-                  type="button"
-                  onClick={() => handleSelect(b)}
-                  className={`min-h-[52px] px-3 py-2.5 text-left rounded-xl border transition-all flex flex-col justify-center relative active:scale-[0.98] cursor-pointer ${
-                    isSelected
-                      ? 'bg-red-600 text-white border-red-600 shadow-md ring-2 ring-red-400'
-                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <span
-                      className={`font-bold text-base leading-tight ${
-                        isSelected ? 'text-white' : 'text-slate-900'
-                      }`}
-                    >
-                      {b.name}
-                    </span>
-                    {isSelected && <Check className="w-4 h-4 text-white shrink-0" />}
-                  </div>
-                  <span
-                    className={`text-xs mt-0.5 leading-tight ${
-                      isSelected ? 'text-red-100' : 'text-slate-500'
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => handleSelect(b)}
+                    className={`min-h-[52px] px-3 py-2.5 text-left rounded-xl border transition-all flex flex-col justify-center relative active:scale-[0.98] cursor-pointer ${
+                      isSelected
+                        ? 'bg-red-600 text-white border-red-600 shadow-md ring-2 ring-red-400'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
                     }`}
                   >
-                    {b.district}
-                  </span>
-                </button>
-              );
-            })}
+                    <div className="flex items-center justify-between gap-1 w-full">
+                      <span
+                        className={`font-bold text-base leading-tight ${
+                          isSelected ? 'text-white' : 'text-slate-900'
+                        }`}
+                      >
+                        {b.name}
+                      </span>
+                      {isSelected && <Check className="w-4 h-4 text-white shrink-0" />}
+                    </div>
+                    <span
+                      className={`text-xs mt-0.5 leading-tight ${
+                        isSelected ? 'text-red-100' : 'text-slate-500'
+                      }`}
+                    >
+                      {b.district}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {filteredBrigades.length > 100 && (
+              <p className="text-xs text-slate-400 text-center">
+                Showing top 100 of {filteredBrigades.length} matches &mdash; keep typing to narrow
+              </p>
+            )}
           </div>
         ) : (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-center space-y-2.5">
